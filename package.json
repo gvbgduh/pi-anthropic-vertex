@@ -1,0 +1,14 @@
+{
+  "name": "pi-anthropic-vertex",
+  "version": "0.1.0",
+  "description": "Pi coding agent provider for Claude models on Google Vertex AI",
+  "keywords": ["pi-package"],
+  "peerDependencies": {
+    "@mariozechner/pi-ai": "*",
+    "@mariozechner/pi-agent-core": "*",
+    "@mariozechner/pi-coding-agent": "*"
+  },
+  "dependencies": {
+    "@anthropic-ai/vertex-sdk": "^0.16.0"
+  }
+}

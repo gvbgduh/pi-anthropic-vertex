@@ -1,0 +1,54 @@
+{
+  "// projectId": "GCP project ID. Also via GOOGLE_CLOUD_PROJECT env var.",
+  "projectId": "your-gcp-project-id",
+
+  "// region": "Vertex AI region. 'global' required for preview models. Also via GOOGLE_CLOUD_LOCATION.",
+  "region": "global",
+
+  "// thinking": [
+    "Controls how Claude reasons before responding. Pi's thinking level (minimal/low/",
+    "medium/high/xhigh) is selected by the user in Pi's UI. This config determines",
+    "how that level translates to Anthropic's API.",
+    "",
+    "Options:",
+    "  'adaptive'  — recommended for 4.6 models (default). Claude decides how deeply",
+    "                 to think based on task complexity. Pi levels map to effort hints:",
+    "                 minimal/low → 'low', medium → 'medium', high → 'high', xhigh → 'max'.",
+    "                 A typo fix gets ~100 thinking tokens, a system design gets ~50k.",
+    "",
+    "  { ... }     — DEPRECATED for 4.6 models. Explicit budget_tokens per Pi level.",
+    "                 Gives hard cost ceiling but may truncate reasoning mid-thought",
+    "                 or waste tokens over-thinking simple tasks.",
+    "                 Example: { 'minimal': 16000, 'low': 32000, 'medium': 64000,",
+    "                            'high': 96000, 'xhigh': 128000 }",
+    "                 All 5 levels required. Values are token counts.",
+    "                 Careful: values exceeding model.maxTokens will be capped.",
+    "",
+    "Thinking can also be disabled per-session in Pi's UI (thinking level → 'off')."
+  ],
+  "thinking": "adaptive",
+
+  "// temperature": [
+    "Optional (0.0–1.0). Only applied when thinking is off in Pi's UI.",
+    "Anthropic rejects temperature when thinking is enabled.",
+    "Lower = more deterministic, higher = more creative/diverse.",
+    "null or omit to use Anthropic's default (1.0)."
+  ],
+  "temperature": null,
+
+  "// cache": [
+    "Prompt caching. Omit or set false to disable.",
+    "true for sensible defaults (system/tools: 1h, messages: 5m).",
+    "Or configure per target below."
+  ],
+  "cache": {
+    "// system": "System prompt — rarely changes, 1h TTL recommended.",
+    "system": { "enabled": true, "ttl": "1h" },
+
+    "// tools": "Tool definitions — rarely change, 1h TTL recommended.",
+    "tools": { "enabled": true, "ttl": "1h" },
+
+    "// messages": "Conversation history — prefix is stable, 5m TTL for interactive use.",
+    "messages": { "enabled": true, "ttl": "5m" }
+  }
+}
