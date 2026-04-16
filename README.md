@@ -8,6 +8,7 @@ Pi's built-in `google-vertex` provider only supports Gemini models. This extensi
 
 | Model | ID | Context | Max Output |
 |-------|----|---------|------------|
+| Claude Opus 4.7 | `claude-opus-4-7` | 1M | 128k |
 | Claude Opus 4.6 | `claude-opus-4-6` | 1M | 128k |
 | Claude Sonnet 4.6 | `claude-sonnet-4-6` | 1M | 64k |
 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | 200k | 16k |

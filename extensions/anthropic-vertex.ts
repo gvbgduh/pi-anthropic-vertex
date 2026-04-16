@@ -103,10 +103,8 @@ function mapEffort(level: string, modelId: string): string | null {
     case "high":
       return "high";
     case "xhigh":
-      // "max" only supported on Opus 4.6
-      return modelId.includes("opus-4-6") || modelId.includes("opus-4.6")
-        ? "max"
-        : "high";
+      // "max" only supported on Opus models
+      return modelId.includes("opus") ? "max" : "high";
     default:
       return null;
   }
@@ -285,6 +283,15 @@ export default function (pi: ExtensionAPI) {
     api: "anthropic-vertex" as any,
 
     models: [
+      {
+        id: "claude-opus-4-7",
+        name: "Claude Opus 4.7 (Vertex AI)",
+        reasoning: true,
+        input: ["text", "image"],
+        cost: { input: 5.0, output: 25.0, cacheRead: 0.5, cacheWrite: 6.25 },
+        contextWindow: 1000000,
+        maxTokens: 128000,
+      },
       {
         id: "claude-opus-4-6",
         name: "Claude Opus 4.6 (Vertex AI)",
