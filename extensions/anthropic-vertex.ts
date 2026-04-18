@@ -975,6 +975,11 @@ function preprocessMessages(messages: any[], model: Model<any>): any[] {
         msg.api === model.api &&
         msg.model === model.id;
 
+      // Local mutable alias — the for...of binding is const, and at runtime
+      // (Pi only strips TS types, doesn't transpile) reassigning it throws
+      // "Assignment to constant variable."
+      let assistantMsg: any = msg;
+
       // Cross-model thinking is unsafe to replay verbatim:
       // - Redacted thinking is bound to the originating model — drop it.
       // - Signed thinking blocks carry a tamper-proof signature scoped to the
@@ -984,17 +989,17 @@ function preprocessMessages(messages: any[], model: Model<any>): any[] {
       //   Clearing the signature routes the block through toAnthropicAssistantBlocks'
       //   fallback that converts unsigned thinking into a plain text block,
       //   which is always safe across models.
-      if (!isSameModel && Array.isArray(msg.content)) {
-        const filtered = msg.content
+      if (!isSameModel && Array.isArray(assistantMsg.content)) {
+        const filtered = assistantMsg.content
           .filter((b: any) => !(b.type === "thinking" && b.redacted))
           .map((b: any) =>
             b.type === "thinking" ? { ...b, thinkingSignature: "" } : b
           );
-        msg = { ...msg, content: filtered };
+        assistantMsg = { ...assistantMsg, content: filtered };
       }
 
       // Track tool calls for orphan detection
-      const toolCalls = (msg.content || []).filter(
+      const toolCalls = (assistantMsg.content || []).filter(
         (b: any) => b.type === "toolCall"
       );
       if (toolCalls.length > 0) {
@@ -1002,7 +1007,7 @@ function preprocessMessages(messages: any[], model: Model<any>): any[] {
         existingToolResultIds.clear();
       }
 
-      result.push(msg);
+      result.push(assistantMsg);
     } else if (msg.role === "toolResult") {
       existingToolResultIds.add(msg.toolCallId);
       result.push(msg);
