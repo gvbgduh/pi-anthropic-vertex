@@ -595,6 +595,17 @@ export default function (pi: ExtensionAPI) {
                 // Map Anthropic stop reasons → Pi: "tool_use"→"toolUse", "end_turn"→"stop"
                 const reason = md.delta?.stop_reason || "stop";
                 output.stopReason = StopReason[reason] || reason;
+                // "refusal" and "sensitive" come through the normal stream as
+                // a stop_reason, not as a thrown error — so the catch block
+                // never runs and errorMessage stays empty. The UI then shows
+                // "Error: Unknown error". Surface a useful message here.
+                if (output.stopReason === "error") {
+                  const detail = `Anthropic stop_reason="${reason}" (no content streamed). ` +
+                    `Common causes: model refusal, safety filter, or invalid ` +
+                    `cross-model thinking signatures after a /model switch.`;
+                  output.errorMessage = `[anthropic-vertex] ${detail}`;
+                  console.error(`[anthropic-vertex] ${detail}`);
+                }
                 if (md.usage) {
                   output.usage.output = md.usage.output_tokens || 0;
                   // Preserve input tokens from message_start if not present here
@@ -923,6 +934,7 @@ function toAnthropicTools(context: Context, cache: CacheConfig): any[] {
 // Mirrors essential parts of Pi's transformMessages() (not exported from pi-ai).
 // - Drops errored/aborted assistant messages (incomplete turns that cause API errors)
 // - Drops cross-model redacted thinking (only valid for the same model)
+// - Strips signatures from cross-model signed thinking (would otherwise refuse silently)
 // - Inserts synthetic tool results for orphaned tool calls (preserves thinking signatures)
 
 function preprocessMessages(messages: any[], model: Model<any>): any[] {
@@ -963,14 +975,22 @@ function preprocessMessages(messages: any[], model: Model<any>): any[] {
         msg.api === model.api &&
         msg.model === model.id;
 
-      // Filter cross-model redacted thinking (only valid for same model)
+      // Cross-model thinking is unsafe to replay verbatim:
+      // - Redacted thinking is bound to the originating model — drop it.
+      // - Signed thinking blocks carry a tamper-proof signature scoped to the
+      //   originating model. Replaying them on a different model (e.g. switching
+      //   4.6 → 4.7 mid-session) triggers a silent refusal: the API streams
+      //   back stop_reason="refusal" with empty content, the user sees nothing.
+      //   Clearing the signature routes the block through toAnthropicAssistantBlocks'
+      //   fallback that converts unsigned thinking into a plain text block,
+      //   which is always safe across models.
       if (!isSameModel && Array.isArray(msg.content)) {
-        const filtered = msg.content.filter(
-          (b: any) => !(b.type === "thinking" && b.redacted)
-        );
-        if (filtered.length !== msg.content.length) {
-          msg = { ...msg, content: filtered };
-        }
+        const filtered = msg.content
+          .filter((b: any) => !(b.type === "thinking" && b.redacted))
+          .map((b: any) =>
+            b.type === "thinking" ? { ...b, thinkingSignature: "" } : b
+          );
+        msg = { ...msg, content: filtered };
       }
 
       // Track tool calls for orphan detection
