@@ -834,12 +834,31 @@ function toAnthropicAssistantBlocks(content: any): any[] {
 function convertToolResultContent(content: any): any {
   if (typeof content === "string") return sanitizeSurrogates(content);
   if (Array.isArray(content)) {
-    return content.map((block: any) => {
+    const hasImages = content.some((c: any) => c.type === "image");
+    if (!hasImages) {
+      return sanitizeSurrogates(content.map((c: any) => c.text || "").join("\n"));
+    }
+    const blocks = content.map((block: any) => {
       if (block.type === "text") {
         return { type: "text", text: sanitizeSurrogates(block.text || "") };
       }
+      if (block.type === "image") {
+        return {
+          type: "image",
+          source: {
+            type: "base64",
+            media_type: block.mimeType,
+            data: block.data,
+          },
+        };
+      }
       return block;
     });
+    // Add placeholder if image-only
+    if (!blocks.some((b: any) => b.type === "text")) {
+      blocks.unshift({ type: "text", text: "(see attached image)" });
+    }
+    return blocks;
   }
   return "";
 }
@@ -847,7 +866,7 @@ function convertToolResultContent(content: any): any {
 // Sanitize user message content:
 // - String: sanitize surrogates
 // - Block array: sanitize text, filter images for non-vision models,
-//   add placeholder if image-only message
+//   translate images to Anthropic format, add placeholder if image-only
 function sanitizeUserContent(content: any, model: Model<any>): any {
   if (typeof content === "string") return sanitizeSurrogates(content);
   if (!Array.isArray(content)) return content;
@@ -857,10 +876,20 @@ function sanitizeUserContent(content: any, model: Model<any>): any {
     if (block.type === "text" && typeof block.text === "string") {
       return { ...block, text: sanitizeSurrogates(block.text) };
     }
+    if (block.type === "image" && supportsImages) {
+      return {
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: block.mimeType,
+          data: block.data,
+        },
+      };
+    }
     return block;
   });
 
-  // Filter images if model doesn't support vision
+  // Filter images if model doesn't support vision (or if they didn't map correctly)
   if (!supportsImages) {
     blocks = blocks.filter((b: any) => b.type !== "image");
   }
